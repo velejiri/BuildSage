@@ -1,58 +1,90 @@
-# BuildSage
+# BuildSage Frontend - README
 
-BuildSage is a decentralized application that helps construction projects predict and manage delays using blockchain technology and weather data.
+This is the frontend application for the BuildSage project, a construction delay prediction system built on Ethereum for the ETH Prague hackathon.
+
+## Project Structure
+
+```
+buildsage-frontend/
+├── public/                  # Static assets
+├── src/
+│   ├── components/          # React components
+│   │   ├── BlockscoutIntegration.tsx
+│   │   ├── ConnectWallet.tsx
+│   │   ├── LayerZeroIntegration.tsx
+│   │   ├── OneInchIntegration.tsx
+│   │   ├── PredictionForm.tsx
+│   │   └── TokenInfo.tsx
+│   ├── contracts/           # Contract ABIs and addresses
+│   │   ├── abis/
+│   │   │   ├── DelayPrediction.json
+│   │   │   └── SAGEToken.json
+│   │   └── addresses.json
+│   ├── hooks/               # Custom React hooks
+│   │   └── useContracts.ts
+│   ├── App.tsx              # Main application component
+│   ├── index.css            # Global styles
+│   └── index.tsx            # Entry point
+└── package.json             # Dependencies and scripts
+```
+
+## Setup Instructions
+
+1. **Update Contract Addresses**:
+   - Edit `src/contracts/addresses.json` to use your deployed contract addresses
+   - Replace the placeholder addresses with your actual deployed contract addresses
+
+2. **Install Dependencies**:
+   ```
+   npm install
+   ```
+   or
+   ```
+   pnpm install
+   ```
+
+3. **Start Development Server**:
+   ```
+   npm run dev
+   ```
+   or
+   ```
+   pnpm run dev
+   ```
+
+4. **Build for Production**:
+   ```
+   npm run build
+   ```
+   or
+   ```
+   pnpm run build
+   ```
 
 ## Features
 
-- SAGE Token: ERC20 token for the BuildSage ecosystem
-- Delay Predictions: Create and manage predictions for construction project delays
-- Weather Data Integration: Track and use weather data for delay predictions
-- Reward Distribution: Incentivize accurate predictions with token rewards
+- **Wallet Connection**: Connect with MetaMask or other Web3 wallets
+- **Token Management**: View and transfer SAGE tokens
+- **Delay Prediction**: Create and manage construction delay predictions
+- **Partner Integrations**:
+  - **Blockscout**: Transaction status checking and Merit points simulation
+  - **1inch**: Token swap quote simulation
+  - **LayerZero**: Cross-chain messaging simulation
 
-## Smart Contracts
+## Customization
 
-- `SAGEToken.sol`: ERC20 token contract with reward distribution capabilities
-- `DelayPrediction.sol`: Contract for managing delay predictions
-- `RewardDistribution.sol`: Contract for distributing rewards
-- `PythIntegration.sol`: Contract for integrating with Pyth Network
-- `BlockscoutIntegration.sol`: Contract for integrating with Blockscout
+- To add real API integrations, update the respective components with actual API calls
+- For production use, replace the simulated API calls with real implementations
+- Add your own styling by modifying the CSS files
 
-## Setup
+## Hackathon Prize Eligibility
 
-1. Install dependencies:
-```bash
-npm install
-```
+This frontend is designed to demonstrate integration with:
+- Blockscout Explorer and SDK
+- 1inch API
+- LayerZero cross-chain messaging
 
-2. Create a `.env` file with your configuration:
-```
-PRIVATE_KEY=your_private_key
-SEPOLIA_RPC_URL=your_sepolia_rpc_url
-ETHERSCAN_API_KEY=your_etherscan_api_key
-```
-
-3. Compile contracts:
-```bash
-npx hardhat compile
-```
-
-4. Deploy contracts:
-```bash
-npx hardhat run scripts/deploy.js --network sepolia
-```
-
-## Web Interface
-
-The project includes a web interface (`web3-interface.html`) for interacting with the smart contracts. To use it:
-
-1. Serve the interface using a local web server:
-```bash
-python -m http.server 8000
-```
-
-2. Open `http://localhost:8000/web3-interface.html` in your browser
-3. Connect your MetaMask wallet
-4. Start interacting with the contracts!
+For full prize eligibility, ensure you complete the backend implementations and connect to the actual APIs with proper authentication.
 
 ## License
 
