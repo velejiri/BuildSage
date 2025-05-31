@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BuildSage Web3 Interface</title>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.8.0/dist/web3.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            background-color: #f5f5f5;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px 0;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            box-sizing: border-box;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #e8f4f8;
+            border-left: 4px solid #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <h1>BuildSage Web3 Interface</h1>
+    
+    <div class="container">
+        <h2>Connect to MetaMask</h2>
+        <button id="connectButton">Connect Wallet</button>
+        <div id="accountArea"></div>
+    </div>
+    
+    <div class="container">
+        <h2>SAGE Token</h2>
+        <button id="checkBalanceButton">Check Balance</button>
+        <div class="result" id="tokenBalance"></div>
+        
+        <h3>Transfer Tokens</h3>
+        <input type="text" id="recipientAddress" placeholder="Recipient Address">
+        <input type="number" id="transferAmount" placeholder="Amount">
+        <button id="transferButton">Transfer</button>
+        <div class="result" id="transferResult"></div>
+    </div>
+    
+    <div class="container">
+        <h2>Delay Predictions</h2>
+        <h3>Create Prediction</h3>
+        <input type="text" id="taskId" placeholder="Task ID">
+        <input type="number" id="riskScore" placeholder="Risk Score (0-100 )" min="0" max="100">
+        <input type="text" id="reason" placeholder="Reason">
+        <button id="createPredictionButton">Create Prediction</button>
+        <div class="result" id="predictionResult"></div>
+        
+        <h3>Get Prediction</h3>
+        <input type="text" id="predictionId" placeholder="Prediction ID">
+        <button id="getPredictionButton">Get Prediction</button>
+        <div class="result" id="predictionDetails"></div>
+    </div>
+    
+    <div class="container">
+        <h2>Weather Data</h2>
+        <input type="text" id="location" placeholder="Location">
+        <input type="text" id="date" placeholder="Date (YYYY-MM-DD)">
+        <select id="condition">
+            <option value="clear">Clear</option>
+            <option value="cloudy">Cloudy</option>
+            <option value="rain">Rain</option>
+            <option value="snow">Snow</option>
+        </select>
+        <input type="number" id="temperature" placeholder="Temperature (°C x 100)">
+        <button id="updateWeatherButton">Update Weather Data</button>
+        <div class="result" id="weatherResult"></div>
+    </div>
+
+    <script>
+        // Add this at the start of your script section
+        // Check browser environment on page load
+        window.addEventListener('load', function() {
+            console.log("Page loaded");
+            console.log("Browser:", navigator.userAgent);
+            console.log("MetaMask installed:", typeof window.ethereum !== 'undefined');
+            console.log("MetaMask provider:", window.ethereum ? window.ethereum.isMetaMask : 'not available');
+            
+            // Check if we're running on a secure context
+            console.log("Secure context:", window.isSecureContext);
+            
+            // Check if we're running on localhost or a proper domain
+            console.log("Current URL:", window.location.href);
+            
+            if (window.location.protocol === 'file:') {
+                console.error("Page is being served from file:// protocol. This won't work with MetaMask!");
+                document.getElementById('accountArea').innerHTML = 
+                    "Error: This page must be served from a web server (http:// or https://), not directly from a file. " +
+                    "Please use a local development server to serve this page.";
+            }
+        });
+
+        // Contract addresses - replace with your deployed addresses
+        const contractAddresses = {
+            SAGEToken: "0x6c642Bca03bf1fDed9815B5EA0eFC8CC9FDFB547",
+            DelayPrediction: "0x58F4A65ac54ab57343c663Dd920Ae2825C8D15cd",
+            RewardDistribution: "0x3Fc9B7F82725a5123792F4846110B5282f5Ef3d2",
+            PythIntegration: "0x5018f5ed685e9781220093e3fC9b3A5e0B72930E",
+            BlockscoutIntegration: "0xa35eB46A5a758ac2DC894F91878bF1B14c575629"
+        };
+        
+        // ABI definitions - these are simplified for the example
+        // In a real implementation, you would use the full ABI from your compiled contracts
+        const sageTokenABI = [
+            // balanceOf function
+            {
+                "inputs": [{"name": "account", "type": "address"}],
+                "name": "balanceOf",
+                "outputs": [{"name": "", "type": "uint256"}],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            // transfer function
+            {
+                "inputs": [
+                    {"name": "to", "type": "address"},
+                    {"name": "amount", "type": "uint256"}
+                ],
+                "name": "transfer",
+                "outputs": [{"name": "", "type": "bool"}],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            }
+        ];
+        
+        const delayPredictionABI = [
+            // createPrediction function
+            {
+                "inputs": [
+                    {"name": "taskId", "type": "string"},
+                    {"name": "riskScore", "type": "uint256"},
+                    {"name": "reason", "type": "string"}
+                ],
+                "name": "createPrediction",
+                "outputs": [{"name": "", "type": "bytes32"}],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            // getPrediction function
+            {
+                "inputs": [{"name": "id", "type": "bytes32"}],
+                "name": "getPrediction",
+                "outputs": [
+                    {"name": "taskId", "type": "string"},
+                    {"name": "riskScore", "type": "uint256"},
+                    {"name": "reason", "type": "string"},
+                    {"name": "timestamp", "type": "uint256"},
+                    {"name": "predictor", "type": "address"},
+                    {"name": "resolved", "type": "bool"},
+                    {"name": "resolution", "type": "string"}
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            // updateWeatherData function
+            {
+                "inputs": [
+                    {"name": "location", "type": "string"},
+                    {"name": "date", "type": "string"},
+                    {"name": "condition", "type": "string"},
+                    {"name": "temperature", "type": "int256"},
+                    {"name": "source", "type": "string"}
+                ],
+                "name": "updateWeatherData",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            }
+        ];
+        
+        // Web3 instance
+        let web3;
+        let accounts = [];
+        let sageToken;
+        let delayPrediction;
+        
+        // Connect to MetaMask
+        async function connectWallet() {
+            console.log("Attempting to connect to MetaMask...");
+            console.log("window.ethereum available:", !!window.ethereum);
+            
+            if (typeof window.ethereum !== 'undefined') {
+                console.log("MetaMask is installed");
+                try {
+                    // Request account access
+                    console.log("Requesting account access...");
+                    web3 = new Web3(window.ethereum);
+                    accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    console.log("Connected accounts:", accounts);
+                    
+                    if (accounts.length > 0) {
+                        document.getElementById('accountArea').innerHTML = `Connected: ${accounts[0]}`;
+                        
+                        // Initialize contract instances
+                        sageToken = new web3.eth.Contract(sageTokenABI, contractAddresses.SAGEToken);
+                        delayPrediction = new web3.eth.Contract(delayPredictionABI, contractAddresses.DelayPrediction);
+                        
+                        // Enable buttons
+                        document.getElementById('checkBalanceButton').disabled = false;
+                        document.getElementById('transferButton').disabled = false;
+                        document.getElementById('createPredictionButton').disabled = false;
+                        document.getElementById('getPredictionButton').disabled = false;
+                        document.getElementById('updateWeatherButton').disabled = false;
+                    } else {
+                        console.error("No accounts found");
+                        document.getElementById('accountArea').innerHTML = "No accounts found. Please unlock MetaMask.";
+                    }
+                } catch (error) {
+                    console.error("Error connecting to MetaMask:", error);
+                    document.getElementById('accountArea').innerHTML = `Error: ${error.message || "Failed to connect to MetaMask"}`;
+                }
+            } else {
+                console.error("MetaMask not detected");
+                document.getElementById('accountArea').innerHTML = "MetaMask not detected. Please make sure MetaMask is installed and refresh the page.";
+            }
+        }
+        
+        // Check token balance
+        async function checkBalance() {
+            try {
+                const balance = await sageToken.methods.balanceOf(accounts[0]).call();
+                document.getElementById('tokenBalance').innerHTML = `Balance: ${web3.utils.fromWei(balance, 'ether')} SAGE`;
+            } catch (error) {
+                console.error("Error checking balance:", error);
+                document.getElementById('tokenBalance').innerHTML = "Error checking balance";
+            }
+        }
+        
+        // Transfer tokens
+        async function transferTokens() {
+            const recipient = document.getElementById('recipientAddress').value;
+            const amount = document.getElementById('transferAmount').value;
+            
+            if (!recipient || !amount) {
+                document.getElementById('transferResult').innerHTML = "Please enter recipient and amount";
+                return;
+            }
+            
+            try {
+                const amountWei = web3.utils.toWei(amount, 'ether');
+                const result = await sageToken.methods.transfer(recipient, amountWei).send({ from: accounts[0] });
+                document.getElementById('transferResult').innerHTML = `Transfer successful! Transaction hash: ${result.transactionHash}`;
+            } catch (error) {
+                console.error("Error transferring tokens:", error);
+                document.getElementById('transferResult').innerHTML = "Error transferring tokens";
+            }
+        }
+        
+        // Create prediction
+        async function createPrediction() {
+            const taskId = document.getElementById('taskId').value;
+            const riskScore = document.getElementById('riskScore').value;
+            const reason = document.getElementById('reason').value;
+            
+            if (!taskId || !riskScore || !reason) {
+                document.getElementById('predictionResult').innerHTML = "Please fill all fields";
+                return;
+            }
+            
+            try {
+                const result = await delayPrediction.methods.createPrediction(taskId, riskScore, reason).send({ from: accounts[0] });
+                document.getElementById('predictionResult').innerHTML = `Prediction created! Transaction hash: ${result.transactionHash}`;
+                
+                // Try to extract the prediction ID from the event
+                if (result.events && result.events.PredictionCreated) {
+                    const predictionId = result.events.PredictionCreated.returnValues.id;
+                    document.getElementById('predictionResult').innerHTML += `<br>Prediction ID: ${predictionId}`;
+                    document.getElementById('predictionId').value = predictionId;
+                }
+            } catch (error) {
+                console.error("Error creating prediction:", error);
+                document.getElementById('predictionResult').innerHTML = "Error creating prediction";
+            }
+        }
+        
+        // Get prediction details
+        async function getPrediction() {
+            const predictionId = document.getElementById('predictionId').value;
+            
+            if (!predictionId) {
+                document.getElementById('predictionDetails').innerHTML = "Please enter a prediction ID";
+                return;
+            }
+            
+            try {
+                const prediction = await delayPrediction.methods.getPrediction(predictionId).call();
+                document.getElementById('predictionDetails').innerHTML = `
+                    Task ID: ${prediction.taskId}<br>
+                    Risk Score: ${prediction.riskScore}<br>
+                    Reason: ${prediction.reason}<br>
+                    Timestamp: ${new Date(prediction.timestamp * 1000).toLocaleString()}<br>
+                    Predictor: ${prediction.predictor}<br>
+                    Resolved: ${prediction.resolved}<br>
+                    Resolution: ${prediction.resolution}
+                `;
+            } catch (error) {
+                console.error("Error getting prediction:", error);
+                document.getElementById('predictionDetails').innerHTML = "Error getting prediction";
+            }
+        }
+        
+        // Update weather data
+        async function updateWeather() {
+            const location = document.getElementById('location').value;
+            const date = document.getElementById('date').value;
+            const condition = document.getElementById('condition').value;
+            const temperature = document.getElementById('temperature').value;
+            
+            if (!location || !date || !condition || !temperature) {
+                document.getElementById('weatherResult').innerHTML = "Please fill all fields";
+                return;
+            }
+            
+            try {
+                const result = await delayPrediction.methods.updateWeatherData(
+                    location,
+                    date,
+                    condition,
+                    temperature,
+                    "Web Interface"
+                ).send({ from: accounts[0] });
+                
+                document.getElementById('weatherResult').innerHTML = `Weather data updated! Transaction hash: ${result.transactionHash}`;
+            } catch (error) {
+                console.error("Error updating weather data:", error);
+                document.getElementById('weatherResult').innerHTML = "Error updating weather data";
+            }
+        }
+        
+        // Event listeners
+        document.getElementById('connectButton').addEventListener('click', connectWallet);
+        document.getElementById('checkBalanceButton').addEventListener('click', checkBalance);
+        document.getElementById('transferButton').addEventListener('click', transferTokens);
+        document.getElementById('createPredictionButton').addEventListener('click', createPrediction);
+        document.getElementById('getPredictionButton').addEventListener('click', getPrediction);
+        document.getElementById('updateWeatherButton').addEventListener('click', updateWeather);
+        
+        // Disable buttons until wallet is connected
+        document.getElementById('checkBalanceButton').disabled = true;
+        document.getElementById('transferButton').disabled = true;
+        document.getElementById('createPredictionButton').disabled = true;
+        document.getElementById('getPredictionButton').disabled = true;
+        document.getElementById('updateWeatherButton').disabled = true;
+
+        // Optionally, set the default account for testing
+        // accounts = ["0x9889b3aEAAF3742135E97eAAfFD44C3BD9Ec6E97"];
+    </script>
+</body>
+</html>
